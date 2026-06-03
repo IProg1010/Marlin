@@ -577,6 +577,13 @@
 #define BOARD_CREALITY_V427_GD32_MFL  7401  // Creality V4.2.7 MFL (GD32F303RE) ... STM32 Variant Above!
 
 //
+// CH32 RISC-V
+//
+
+#define BOARD_CH32V307_DIY        16000  // CH32V307VET6 board
+
+
+//
 // Raspberry Pi
 //
 

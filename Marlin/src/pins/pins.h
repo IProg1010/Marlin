@@ -950,6 +950,13 @@
   #include "gd32f3/pins_CREALITY_V427_GD32_MFL.h"   // GD32F303RE                           env:GD32F303RE_creality_mfl
 
 //
+// CH32 RISC-V
+//
+
+#elif MB(CH32V307_DIY)
+  #include "ch32v307/pins_CH32V307_DIY.h"           // CH32V307                             env:CH32V307_marlin
+
+//
 // Raspberry Pi RP2040
 //
 

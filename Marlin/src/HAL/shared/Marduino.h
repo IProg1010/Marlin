@@ -33,7 +33,11 @@
 #undef sq             // Redefined by teensy3/wiring.h
 #undef UNUSED         // Redefined by stm32f4xx_hal_def.h
 
-#include <Arduino.h>  // NOTE: If included earlier then this line is a NOOP
+#if defined(HAL_PLATFORM) && HAL_PLATFORM == HAL_CH32V307
+  // non-OS SDK platform. All basic Arduino types and functions are implemented natively inside HAL.h
+#else
+  #include <Arduino.h>  // NOTE: If included earlier then this line is a NOOP
+#endif
 
 #undef DISABLED
 #define DISABLED(V...) DO(DIS,&&,V)
