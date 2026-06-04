@@ -3,15 +3,27 @@
 #include <stddef.h>
 #include "ch32v30x.h"
 
+
 class MarlinSerial {
 public:
   void begin(const long baud);
-  void end() {}
-  
+  void end() {};
+
+  bool connected() { return true; };
+  void msgDone() {} 
+
+  template <typename T, typename F>
+  bool has_feature(T port, F feature) { return false; }
+
+  template <typename T> inline int read(T index)      { return read(); }
+  template <typename T> inline int available(T index) { return available(); }
+
+
   void write(const uint8_t c);
   int read();
   int available();
   void flush() {}
+  void flushTX(); 
 
   // Реализация методов print для совместимости с ядром Marlin 3.0
   void print(const char* str);
@@ -19,6 +31,8 @@ public:
   void print(int n, int base = 10);
   void print(long n, int base = 10);
   void print(double n, int digits = 2);
+  void print(unsigned int n, int base = 10);
+  void print(unsigned long n, int base = 10);
 
   void println();
   void println(const char* str);
@@ -26,6 +40,8 @@ public:
   void println(int n, int base = 10);
   void println(long n, int base = 10);
   void println(double n, int digits = 2);
+  void println(unsigned int n, int base = 10);
+  void println(unsigned long n, int base = 10);
 };
 
 // Объявляем глобальный объект нашего серийного порта

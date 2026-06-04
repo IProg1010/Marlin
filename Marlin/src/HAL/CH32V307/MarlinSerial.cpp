@@ -34,6 +34,11 @@ void MarlinSerial::begin(const long baud) {
     USART_Cmd(USART1, ENABLE);
 }
 
+void MarlinSerial::flushTX() {
+    // Ожидаем, пока физический сдвиговый регистр USART1 полностью отправит байт в линию
+    while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET);
+}
+
 void MarlinSerial::write(const uint8_t c) {
     // Ожидаем окончания передачи предыдущего байта (флаг TXE)
     while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
@@ -73,9 +78,23 @@ void MarlinSerial::print(double n, int digits) {
     print(buf);
 }
 
+void MarlinSerial::print(unsigned int n, int base) {
+    char buf[12];
+    snprintf(buf, sizeof(buf), (base == 16) ? "%x" : "%u", n);
+    print(buf);
+}
+
+void MarlinSerial::print(unsigned long n, int base) {
+    char buf[12];
+    snprintf(buf, sizeof(buf), (base == 16) ? "%lx" : "%lu", n);
+    print(buf);
+}
+
 void MarlinSerial::println() { print("\r\n"); }
 void MarlinSerial::println(const char* str) { print(str); println(); }
 void MarlinSerial::println(char c)          { print(c); println(); }
 void MarlinSerial::println(int n, int base) { print(n, base); println(); }
 void MarlinSerial::println(long n, int base){ print(n, base); println(); }
 void MarlinSerial::println(double n, int digits) { print(n, digits); println(); }
+void MarlinSerial::println(unsigned int n, int base) { print(n, base); println(); }
+void MarlinSerial::println(unsigned long n, int base){ print(n, base); println(); }
