@@ -150,6 +150,6 @@ FORCE_INLINE static void HAL_timer_start(const uint8_t timer_num, const uint32_t
 
     customized_serial.println("  Configuring TIM3... ok");
       // Включаем таймер
-      //TIM_Cmd(TIM3, ENABLE);
+      TIM_Cmd(TIM3, ENABLE);
     }                                     
 }

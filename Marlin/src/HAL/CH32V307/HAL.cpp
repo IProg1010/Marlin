@@ -112,12 +112,50 @@ void delay(const int ms) {
 }
 
 extern "C" char* dtostrf(double __val, signed char __width, unsigned char __prec, char* __s) {
-    // Формируем динамическую строку формата, например, "%10.4f"
-    char format[16];
-    snprintf(format, sizeof(format), "%%%d.%df", __width, __prec);
-    
-    // Записываем результат форматирования float напрямую в буфер прошивки
-    snprintf(__s, __width > 0 ? __width + 1 : 32, format, __val);
+    // 1. Обработка знака
+    bool negative = false;
+    if (__val < 0.0) {
+        negative = true;
+        __val = -__val;
+    }
+
+    // 2. Округление до заданной точности
+    double rounding = 0.5;
+    for (int i = 0; i < __prec; ++i) rounding /= 10.0;
+    __val += rounding;
+
+    // 3. Выделение целой части
+    long int_part = (long)__val;
+
+    // 4. Выделение дробной части
+    double diff = __val - (double)int_part;
+    long frac_part = 1;
+    for (int i = 0; i < __prec; i++) frac_part *= 10;
+    long frac_val = (long)(diff * frac_part);
+
+    if (frac_val >= frac_part) {
+        int_part++;
+        frac_val -= frac_part;
+    }
+
+    // 5. Безопасная сборка строки через целые числа (которые работают всегда)
+    char temp_buf[32];
+    if (__prec > 0) {
+        // Форматируем дробную часть с ведущими нулями (например, %01ld или %02ld)
+        char frac_fmt[10];
+        snprintf(frac_fmt, sizeof(frac_fmt), "%%ld.%%0%dld", __prec);
+        snprintf(temp_buf, sizeof(temp_buf), frac_fmt, int_part, frac_val);
+    } else {
+        snprintf(temp_buf, sizeof(temp_buf), "%ld", int_part);
+    }
+
+    // 6. Добавляем минус, если число было отрицательным
+    if (negative) {
+        snprintf(__s, __width > 0 ? __width + 1 : 32, "-%s", temp_buf);
+    } else {
+        snprintf(__s, __width > 0 ? __width + 1 : 32, "%s", temp_buf);
+    }
+
     return __s;
 }
 void MarlinHAL::adc_init() {

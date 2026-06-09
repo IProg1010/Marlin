@@ -118,11 +118,46 @@ void MarlinSerial::print(long n, int base) {
 }
 
 void MarlinSerial::print(double n, int digits) {
-    char format[10];
-    char buf[32];
-    snprintf(format, sizeof(format), "%%.%df", digits);
-    snprintf(buf, sizeof(buf), format, n);
-    print(buf);
+        // Обработка отрицательных чисел
+    if (n < 0.0) {
+        print('-');
+        n = -n;
+    }
+
+    // Округление в зависимости от нужной точности (digits)
+    double rounding = 0.5;
+    for (int i = 0; i < digits; ++i) {
+        rounding /= 10.0;
+    }
+    n += rounding;
+
+    // Выделяем целую часть
+    long integer_part = (long)n;
+    print(integer_part, 10); // Выводим целое число через ваш рабочий метод
+
+    // Если нужны знаки после запятой
+    if (digits > 0) {
+        print('.'); // Ставим точку
+        
+        // Выделяем дробную часть
+        double remainder = n - (double)integer_part;
+        long fractional_part = 0;
+        
+        // Превращаем дробь в целое число (например, 0.5 -> 5)
+        for (int i = 0; i < digits; ++i) {
+            remainder *= 10.0;
+        }
+        fractional_part = (long)remainder;
+
+        // Важно: если дробная часть имеет ведущие нули (например, 25.05),
+        // нужно вывести этот ноль перед цифрой 5.
+        char format[12];
+        snprintf(format, sizeof(format), "%%0%dd", digits); // Собирает формат типа "%01d" или "%02d"
+        
+        char buf[16];
+        snprintf(buf, sizeof(buf), format, fractional_part);
+        print(buf);
+    }
 }
 
 void MarlinSerial::print(unsigned int n, int base) {
