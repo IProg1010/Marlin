@@ -83,9 +83,23 @@
 #define PE3  67
 
 // Базовые макросы быстрого ввода-вывода Marlin 3.0
-#define _READ(P)               ((PIN_TO_PORT(P)->INDR & PIN_TO_BITMASK(P)) ? 1 : 0)
-#define _WRITE(P,V)            do { if (V) PIN_TO_PORT(P)->BSHR = PIN_TO_BITMASK(P); else PIN_TO_PORT(P)->BCR = PIN_TO_BITMASK(P); } while(0)
-#define _TOGGLE(P)             do { PIN_TO_PORT(P)->OUTDR ^= PIN_TO_BITMASK(P); } while(0)
+// Модернизируем _WRITE с защитой
+#define _WRITE(P,V) do { \
+  if (pin_is_valid(P)) { \
+    if (V) PIN_TO_PORT(P)->BSHR = PIN_TO_BITMASK(P); \
+    else   PIN_TO_PORT(P)->BCR = PIN_TO_BITMASK(P); \
+  } \
+} while(0)
+
+// Модернизируем _READ с защитой
+#define _READ(P) (pin_is_valid(P) ? ((PIN_TO_PORT(P)->INDR & PIN_TO_BITMASK(P)) ? 1 : 0) : 0)
+
+// Модернизируем _TOGGLE с защитой
+#define _TOGGLE(P) do { \
+  if (pin_is_valid(P)) { \
+    PIN_TO_PORT(P)->OUTDR ^= PIN_TO_BITMASK(P); \
+  } \
+} while(0)
 
 #define _SET_INPUT(P)          do { pinMode(P, INPUT); } while(0)
 #define _SET_OUTPUT(P)         do { pinMode(P, OUTPUT); } while(0)

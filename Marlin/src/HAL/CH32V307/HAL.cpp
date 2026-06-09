@@ -76,7 +76,8 @@ extern "C" char _heap_start;
 void MarlinHAL::init_board() {
     // Включаем тактирование всех основных портов GPIO, чтобы пины принтера были готовы к работе
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB | 
-                           RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD, ENABLE);
+                           RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | 
+                           RCC_APB2Periph_GPIOE | RCC_APB2Periph_AFIO, ENABLE);
                            
     // Настраиваем отладочный светодиод на плате (PA0), если он используется
     #ifdef LED_PIN
@@ -96,7 +97,15 @@ uint32_t MarlinHAL::freeMemory() {
 
 // Обычные функции времени остаются глобальными
 unsigned long millis() { return system_millis; }
-unsigned long micros() { return system_millis * 1000; }
+unsigned long micros() {     
+    uint32_t ticks = SysTick->CNT; // Текущие тики внутри текущей миллисекунды
+    uint32_t ms = system_millis;
+    
+    // Переводим тики процессора в микросекунды.
+    // Частота 144 МГц означает, что 144 тика = 1 микросекунда.
+    return (ms * 1000) + (ticks / (SystemCoreClock / 1000000)); 
+}
+
 void delay(const int ms) {
     uint32_t start = millis();
     while (millis() - start < (uint32_t)ms) { __NOP(); }
@@ -146,28 +155,30 @@ raw_adc_t MarlinHAL::adc_get_result() {
 
 // Реализация pinMode с использованием типов uint16_t и uint8_t строго как в HAL.h
 void pinMode(uint16_t pin, uint8_t mode) {
-    if (!pin_is_valid(pin)) return;
+    customized_serial.print("[pin:");
+    customized_serial.print((int)pin);
+    customized_serial.print("]");
+
+    if (pin == 9 || pin == 10) return;
+    // Жесткая проверка валидности пина (учитываем, что 65535 — это бывший -1)
+    if (pin == 0xFFFF || !pin_is_valid(pin)) return;
+
+    GPIO_TypeDef* port = PIN_TO_PORT(pin);
+    if (!port) return; // Защита от нулевого указателя порта
+
+    uint16_t bitmask = PIN_TO_BITMASK(pin);
+    if (bitmask == 0) return; // Защита от пустой маски
 
     GPIO_InitTypeDef GPIO_InitStructure = {0};
-    
-    // Автоматически включаем тактирование нужного порта при конфигурации пина
-    GPIO_TypeDef* port = PIN_TO_PORT(pin);
-    uint32_t rcc_periph = 0;
-    if (port == GPIOA) rcc_periph = RCC_APB2Periph_GPIOA;
-    else if (port == GPIOB) rcc_periph = RCC_APB2Periph_GPIOB;
-    else if (port == GPIOC) rcc_periph = RCC_APB2Periph_GPIOC;
-    else if (port == GPIOD) rcc_periph = RCC_APB2Periph_GPIOD;
-    else if (port == GPIOE) rcc_periph = RCC_APB2Periph_GPIOE;
-    
-    if (rcc_periph) RCC_APB2PeriphClockCmd(rcc_periph, ENABLE);
-
-    GPIO_InitStructure.GPIO_Pin = PIN_TO_BITMASK(pin);
+    GPIO_InitStructure.GPIO_Pin = bitmask;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 
     if (mode == OUTPUT) {
-        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP; // Push-Pull выход
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;      // Push-Pull выход
     } else if (mode == INPUT_PULLUP) {
-        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;    // Вход с подтяжкой к VCC
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;         // Вход с подтяжкой к VCC
+    } else if (mode == INPUT_PULLDOWN) {
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;         // Вход с подтяжкой к GND
     } else {
         GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING; // Обычный вход
     }

@@ -55,6 +55,7 @@ inline void HAL_reboot() { NVIC_SystemReset(); }
 #define INPUT        0x0
 #define OUTPUT       0x1
 #define INPUT_PULLUP 0x2
+#define INPUT_PULLDOWN 0x03 // Или любое свободное число, например 3
 
 // Макросы прогмем (для AVR совместимости строк, на 32 битах они пустые)
 #define PROGMEM
