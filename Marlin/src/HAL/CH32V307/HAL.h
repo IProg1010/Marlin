@@ -121,6 +121,19 @@ public:
 
 extern MarlinHAL hal;
 
+// Подключаем наш кастомный класс SPI
+#include "MarlinSPI.h"
+
+// Объявляем глобальный объект шины, который мы создадим в HAL.cpp
+extern MarlinSPI customized_spi3;
+
+// КРИТИЧНО ДЛЯ МАРЛИНА 3.0: Перенаправляем дефайны ядра на наш объект
+#define extDigitalWrite(pin, state) digitalWrite(pin, state) // Обертка для CS пинов
+
+#ifndef SD_SPI_DEVICE
+  #define SD_SPI_DEVICE customized_spi3
+#endif
+
 // Глобальные заглушки для функций управления GPIO
 void pinMode(uint16_t pin, uint8_t mode);
 void digitalWrite(uint16_t pin, uint8_t val);

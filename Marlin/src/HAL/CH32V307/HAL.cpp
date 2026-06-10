@@ -75,6 +75,8 @@ void MarlinHAL::idletask() {
     }*/
 }
 
+MarlinSPI customized_spi3(PC12, PC11, PC10, PB6); 
+
 // Объявляем внешние маркеры линкера для расчета свободной памяти
 extern "C" char _end;
 extern "C" char _heap_start;
