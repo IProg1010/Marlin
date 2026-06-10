@@ -67,6 +67,12 @@ void MarlinHAL::init() {
 
 void MarlinHAL::idletask() {
     // Вызывается в пустых циклах
+
+    /*static uint32_t toggle_cnt = 0;
+    if (++toggle_cnt >= 100000) { 
+        TOGGLE(PC0); 
+        toggle_cnt = 0;
+    }*/
 }
 
 // Объявляем внешние маркеры линкера для расчета свободной памяти
@@ -111,85 +117,73 @@ void delay(const int ms) {
     while (millis() - start < (uint32_t)ms) { __NOP(); }
 }
 
-extern "C" char* dtostrf(double __val, signed char __width, unsigned char __prec, char* __s) {
-    // 1. Обработка знака
-    bool negative = false;
-    if (__val < 0.0) {
-        negative = true;
-        __val = -__val;
-    }
-
-    // 2. Округление до заданной точности
-    double rounding = 0.5;
-    for (int i = 0; i < __prec; ++i) rounding /= 10.0;
-    __val += rounding;
-
-    // 3. Выделение целой части
-    long int_part = (long)__val;
-
-    // 4. Выделение дробной части
-    double diff = __val - (double)int_part;
-    long frac_part = 1;
-    for (int i = 0; i < __prec; i++) frac_part *= 10;
-    long frac_val = (long)(diff * frac_part);
-
-    if (frac_val >= frac_part) {
-        int_part++;
-        frac_val -= frac_part;
-    }
-
-    // 5. Безопасная сборка строки через целые числа (которые работают всегда)
-    char temp_buf[32];
-    if (__prec > 0) {
-        // Форматируем дробную часть с ведущими нулями (например, %01ld или %02ld)
-        char frac_fmt[10];
-        snprintf(frac_fmt, sizeof(frac_fmt), "%%ld.%%0%dld", __prec);
-        snprintf(temp_buf, sizeof(temp_buf), frac_fmt, int_part, frac_val);
-    } else {
-        snprintf(temp_buf, sizeof(temp_buf), "%ld", int_part);
-    }
-
-    // 6. Добавляем минус, если число было отрицательным
-    if (negative) {
-        snprintf(__s, __width > 0 ? __width + 1 : 32, "-%s", temp_buf);
-    } else {
-        snprintf(__s, __width > 0 ? __width + 1 : 32, "%s", temp_buf);
-    }
-
-    return __s;
+extern "C" char* dtostrf(double val, signed char width, unsigned char prec, char* sout) {
+    char fmt[16]; // Выделяем честный массив на 16 байт
+    snprintf(fmt, sizeof(fmt), "%%%d.%df", width, prec);
+    sprintf(sout, fmt, val);
+    return sout;
 }
+// Инициализируем статическую переменную класса (не забудьте объявить её в заголовочнике)
+uint16_t MarlinHAL::adc_result = 0;
+
+// 1. Вызывается один раз при старте прошивки
 void MarlinHAL::adc_init() {
     ADC_InitTypeDef ADC_InitStructure = {0};
+
+    // Включаем тактирование модуля ADC1
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+    
+    // Частота АЦП: 144 МГц / 8 = 8 МГц (в пределах допустимых 14 МГц)
     RCC_ADCCLKConfig(RCC_PCLK2_Div8);
+
+    // Базовая конфигурация ADC1
     ADC_InitStructure.ADC_Mode = ADC_Mode_Independent;
     ADC_InitStructure.ADC_ScanConvMode = DISABLE;
     ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
     ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_None;
-    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+    ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right; // 12 бит, правое выравнивание
     ADC_InitStructure.ADC_NbrOfChannel = 1;
     ADC_Init(ADC1, &ADC_InitStructure);
+
+    // Включаем АЦП
     ADC_Cmd(ADC1, ENABLE);
+
+    // Калибровка (Обязательна для CH32V307!)
     ADC_ResetCalibration(ADC1);
     while(ADC_GetResetCalibrationStatus(ADC1));
     ADC_StartCalibration(ADC1);
     while(ADC_GetCalibrationStatus(ADC1));
 }
 
-// Было: void HAL_adc_start_conversion(const uint8_t ch)
-// Стало:
-void MarlinHAL::adc_start(const uint8_t ch) {
-    ADC_RegularChannelConfig(ADC1, ch, 1, ADC_SampleTime_239Cycles5);
+// 2. Настройка конкретной ножки под АЦП
+void MarlinHAL::adc_enable(const uint8_t pin) {
+    // Используем вашу готовую и проверенную функцию pinMode!
+    // В Marlin режим INPUT_ANALOG на уровне вашей pinMode должен переводить пин в GPIO_Mode_AIN
+    pinMode(pin, INPUT_ANALOG); 
+}
+
+// 3. Запуск конверсии на пине (Вызывается из Temperature::isr)
+void MarlinHAL::adc_start(const uint8_t pin) {
+    //printf("adc start\r\n");
+    // Переводим пин Marlin во внутренний номер канала АЦП CH32
+    // Напишите тут вашу функцию маппинга, если пины плат не совпадают с каналами АЦП.
+    // Если TEMP_0_PIN в pins_*.h равен 0 (для PA0), то канал = 0.
+    uint8_t adc_channel = (uint8_t)pin; 
+    if (adc_channel > 15) return;
+
+    // Конфигурируем выбранный канал термистора
+    ADC_RegularChannelConfig(ADC1, adc_channel, 1, ADC_SampleTime_239Cycles5);
+
+    // Запускаем преобразование аппаратно
     ADC_SoftwareStartConvCmd(ADC1, ENABLE);
-}
 
-// Было: raw_adc_t HAL_adc_get_result()
-// Стало:
-raw_adc_t MarlinHAL::adc_get_result() {
+    // НАДЕЖНЫЙ СИНХРОННЫЙ ПУТЬ:
+    // Ждем окончания конверсии прямо здесь, чтобы гарантировать ядру Marlin наличие данных
     while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
-    return ADC_GetConversionValue(ADC1);
-}
 
+    // Сохраняем результат в статическую переменную класса, которую ждет метод adc_value()
+    adc_result = ADC_GetConversionValue(ADC1);
+}
 
 // Реализация pinMode с использованием типов uint16_t и uint8_t строго как в HAL.h
 void pinMode(uint16_t pin, uint8_t mode) {

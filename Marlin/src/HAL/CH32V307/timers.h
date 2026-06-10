@@ -86,7 +86,7 @@ FORCE_INLINE static uint32_t HAL_timer_get_count(const uint8_t timer_num) {
   return 0;
 }
 
-// Заглушка запуска таймера температуры
+// запуска таймера температуры
 FORCE_INLINE static void HAL_timer_start(const uint8_t timer_num, const uint32_t freq) { 
     customized_serial.print("-> HAL_timer_start for T=");
     customized_serial.println((int)timer_num);
@@ -120,7 +120,7 @@ FORCE_INLINE static void HAL_timer_start(const uint8_t timer_num, const uint32_t
       NVIC_Init(&NVIC_InitStructure);
 
       // Включаем таймер
-      //TIM_Cmd(TIM2, ENABLE);
+      TIM_Cmd(TIM2, ENABLE);
     customized_serial.println("  Configuring TIM2... ok");
     } 
     else if (timer_num == MF_TIMER_TEMP) {

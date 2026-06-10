@@ -69,6 +69,20 @@ void MarlinSerial::begin(const long baud) {
         while (USART_GetFlagStatus(USART1, USART_FLAG_TXE) == RESET);
         USART_SendData(USART1, *p);
     }
+
+      this->println("\r\n=== CORE FLOAT TEST START ===");
+    
+    double test_value = 123.456;
+    this->print("Testing customized print(double): ");
+    this->println(test_value, 3); // Должно напечатать 123.456
+
+    // Проверим сырой snprintf, который используется у вас внутри класса
+    char test_buf[32];
+    snprintf(test_buf, sizeof(test_buf), "%f", 98.76);
+    this->print("Testing raw snprintf(%%f): ");
+    this->println(test_buf); // Должно напечатать 98.760000
+
+    this->println("=== CORE FLOAT TEST END ===\r\n");
 }
 
 // Функция возвращает текущую позицию, куда DMA пишет данные прямо сейчас

@@ -32,9 +32,9 @@
 #define LED_PIN       PA0 
 
 // Концевики (Endstops)
-#define X_MIN_PIN     PA1
-#define Y_MIN_PIN     PA2
-#define Z_MIN_PIN     PA3
+#define X_MIN_PIN     PA5
+#define Y_MIN_PIN     PA6
+#define Z_MIN_PIN     PA7
 
 // Шаговые моторы: Оси X, Y, Z
 #define X_STEP_PIN    PC0

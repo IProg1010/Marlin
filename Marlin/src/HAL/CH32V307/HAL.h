@@ -56,6 +56,9 @@ inline void HAL_reboot() { NVIC_SystemReset(); }
 #define OUTPUT       0x1
 #define INPUT_PULLUP 0x2
 #define INPUT_PULLDOWN 0x03 // Или любое свободное число, например 3
+#ifndef INPUT_ANALOG
+  #define INPUT_ANALOG 0x04 // Задаем уникальный ID режима для нашего HAL
+#endif
 
 // Макросы прогмем (для AVR совместимости строк, на 32 битах они пустые)
 #define PROGMEM
@@ -85,11 +88,6 @@ typedef uint8_t byte;
 #define HAL_ADC_RESOLUTION  12  // 12-битный АЦП у QingKe V4F
 typedef uint16_t raw_adc_t;      // Тип данных для хранения сырого значения АЦП (0..4095)
 
-// Обязательные функции АЦП, которые Marlin будет вызывать для чтения термисторов
-void HAL_adc_init();
-void HAL_adc_start_conversion(const uint8_t ch);
-raw_adc_t HAL_adc_get_result();
-
 // Объявление класса MarlinHAL для Marlin 3.0
 class MarlinHAL {
 public:
@@ -111,13 +109,14 @@ public:
   static void isr_off() { /*DISABLE_STEPPER_DRIVER_INTERRUPT();*/ }
   static void isr_on()  { ENABLE_STEPPER_DRIVER_INTERRUPT();  } // Добавляем эту строчку
 
-  // Объектные методы АЦП для Marlin 3.0
+  static uint16_t adc_result; // Статический буфер для хранения результата
+
   static void adc_init();
-  static void adc_enable(const pin_t pin) { (void)pin; } // Заглушка активации канала
-  static void adc_start(const uint8_t ch);
-  static raw_adc_t adc_get_result();
-  static uint8_t adc_ready() { return 0; }
-  static raw_adc_t adc_value() { return 0; }
+  static void adc_enable(const uint8_t pin);
+  static void adc_start(const uint8_t pin);
+  
+  static bool adc_ready() { return true; }
+  static uint16_t adc_value() { return adc_result; }
 };
 
 extern MarlinHAL hal;
