@@ -1,0 +1,15 @@
+diff -Naur a/library.json b/library.json
+--- /dev/null
++++ b/library.json
+@@ -0,0 +1,11 @@
++{
++  "name": "lwip",
++  "version": "2.1.2",
++  "build": {
++    "srcFilter": [
++      "+<*>",
++      "-<apps/*>",
++      "-<src/apps/*>"
++    ]
++  }
++}

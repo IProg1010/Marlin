@@ -42,6 +42,7 @@ void idletask() {
     // Вызывается Marlin в пустых циклах ожидания
 }*/
 #include "HAL.h"
+#include "dev_eth_function.h"
 
 
 // Создаем экземпляр класса HAL для прошивки
@@ -65,6 +66,8 @@ void MarlinHAL::init() {
     NVIC_EnableIRQ(SysTick_IRQn);
 }
 
+
+netconfig net_config = {{192, 168, 3, 83}, {255, 255, 254, 0}, {192, 168, 3, 1}, {192, 168, 12, 83, 34, 67}};
 void MarlinHAL::idletask() {
     // Вызывается в пустых циклах
 
@@ -73,6 +76,7 @@ void MarlinHAL::idletask() {
         TOGGLE(PC0); 
         toggle_cnt = 0;
     }*/
+    lwip_loop();
 }
 
 MarlinSPI customized_spi3(PC12, PC11, PC10, PB6); 
@@ -87,11 +91,16 @@ void MarlinHAL::init_board() {
                            RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | 
                            RCC_APB2Periph_GPIOE | RCC_APB2Periph_AFIO, ENABLE);
                            
+
     // Настраиваем отладочный светодиод на плате (PA0), если он используется
     #ifdef LED_PIN
       pinMode(LED_PIN, OUTPUT);
       digitalWrite(LED_PIN, LOW);
     #endif
+    
+    set_net_config(&net_config);
+
+    lwip_initialize();
 }
 
 uint32_t MarlinHAL::freeMemory() {
@@ -235,4 +244,24 @@ void digitalWrite(uint16_t pin, uint8_t val) {
 bool digitalRead(uint16_t pin) {
     if (!pin_is_valid(pin)) return false;
     return (PIN_TO_PORT(pin)->INDR & PIN_TO_BITMASK(pin)) ? true : false;
+}
+
+extern "C" {
+
+    void delay_ms(uint32_t ms) {
+        // Используем твою уже готовую и проверенную функцию delay() из HAL Marlin
+        delay(ms); 
+    }
+
+    void delay_us(uint32_t us) {
+        // Микросекундная задержка на базе аппаратного счетчика SysTick чипа CH32V307
+        // Частота 144 МГц означает, что в 1 микросекунде ровно 144 тика процессора
+        uint32_t start_ticks = SysTick->CNT;
+        uint32_t ticks_to_wait = us * (SystemCoreClock / 1000000UL);
+        
+        while ((SysTick->CNT - start_ticks) < ticks_to_wait) {
+            __NOP(); // Крутимся в цикле, пока не пройдет нужное количество микросекунд
+        }
+    }
+
 }

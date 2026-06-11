@@ -54,6 +54,8 @@
 #define E0_DIR_PIN    PA9
 #define E0_ENABLE_PIN PA10
 
+#define SD_SS_PIN  PB6
+
 // Нагреватели (Heaters) и ШИМ-выходы
 #define HEATER_0_PIN  PB0   // Хотэнд E0
 #define HEATER_BED_PIN PB1  // Стол (Heated Bed)

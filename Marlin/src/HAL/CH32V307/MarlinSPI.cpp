@@ -2,6 +2,7 @@
 #include "MarlinSPI.h"
 #include "ch32v30x_spi.h"
 #include "ch32v30x_gpio.h"
+#include "MarlinSerial.h"
 
 MarlinSPI::MarlinSPI(uint8_t mosi, uint8_t miso, uint8_t sclk, uint8_t ssel) 
   : _mosiPin(mosi), _misoPin(miso), _sckPin(sclk), _ssPin(ssel) {
@@ -31,6 +32,8 @@ void MarlinSPI::begin(void) {
 }
 
 void MarlinSPI::initHardware() {
+
+    customized_serial.println("\r\n[SPI3_DBG] Entering initHardware()...");
     GPIO_InitTypeDef GPIO_InitStructure = {0};
     SPI_InitTypeDef SPI_InitStructure = {0};
 
@@ -80,15 +83,25 @@ void MarlinSPI::initHardware() {
     SPI_Init(_spiInstance, &SPI_InitStructure);
 
     SPI_Cmd(_spiInstance, ENABLE);
+    customized_serial.println("\r\n[SPI3_DBG] Entering initHardware() OK\r\n");
 }
 
 uint8_t MarlinSPI::transfer(uint8_t data) {
-    // Ждем очистки буфера передачи (TXE)
-    while (SPI_I2S_GetFlagStatus(_spiInstance, SPI_I2S_FLAG_TXE) == RESET);
+    uint32_t timeout;
+
+    // 1. Защита буфера передачи
+    timeout = 100000;
+    while (SPI_I2S_GetFlagStatus(_spiInstance, SPI_I2S_FLAG_TXE) == RESET) {
+        if (--timeout == 0) return 0xFF; // Выходим по таймауту, если шина лежит
+    }
     SPI_I2S_SendData(_spiInstance, data);
 
-    // Ждем заполнения буфера приема (RXNE)
-    while (SPI_I2S_GetFlagStatus(_spiInstance, SPI_I2S_FLAG_RXNE) == RESET);
+    // 2. Защита буфера приема
+    timeout = 100000;
+    while (SPI_I2S_GetFlagStatus(_spiInstance, SPI_I2S_FLAG_RXNE) == RESET) {
+        if (--timeout == 0) return 0xFF; // Выходим по таймауту, если карта не ответила
+    }
+    
     return SPI_I2S_ReceiveData(_spiInstance);
 }
 
